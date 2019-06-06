@@ -1,0 +1,4 @@
+﻿  chapter_12.cpp
+c:\users\ahwi\02.note\06.cplusplus\00.note\code\primer\chapter_12.cpp(13): warning C4477: “printf”: 格式字符串“%d”需要类型“int”的参数，但可变参数 1 拥有了类型“std::shared_ptr<int>”
+c:\users\ahwi\02.note\06.cplusplus\00.note\code\primer\chapter_12.cpp(17): warning C4477: “printf”: 格式字符串“%d”需要类型“int”的参数，但可变参数 1 拥有了类型“std::shared_ptr<int>”
+  Primer.vcxproj -> C:\Users\ahwi\02.note\06.cplusplus\00.note\code\Primer\Primer\Debug\Primer.exe

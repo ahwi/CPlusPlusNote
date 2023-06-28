@@ -45,8 +45,40 @@ void test_finally()
 		cout << "bbb" << endl;
 }
 
+
+
+struct aproxy {
+    aproxy(int& r) : mPtr(&r) {}
+    void operator = (int n) {
+        if (n > 1 || n < 0) {
+            throw "not binary digit";
+        }
+        *mPtr = n;
+    }
+    int * mPtr;
+};
+
+struct array1 {
+    int mArray[10];
+    aproxy operator[](int i) {
+		mArray[i];
+		cout << i << endl;
+        return aproxy(mArray[i]);
+    }
+};
+
+
 int main(int argc, char *argv[])
 {
-	test_finally();
+    try {
+        array1 a;
+        a[0] = 1;   // ok
+        a[0] = 42;  // throws exception
+    }
+    catch (const char * e) {
+        cout << e << endl;
+    }
+	//test_finally();
+	while(1);
 	return 0;
 }

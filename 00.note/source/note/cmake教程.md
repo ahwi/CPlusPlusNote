@@ -168,6 +168,164 @@ set(EXECUTABLE_OUTPUT_PATH ${HOME}/bin)
 
 > 如果此处指定可执行程序生成路径的时候使用的是相对路径 ./xxx/xxx，那么这个路径中的 ./ 对应的就是 makefile 文件所在的那个目录
 
+### 2.6 搜索文件
+
+搜索文件的命令：
+* `aux_source_directory`
+* `file`
+
+**`aux_source_directory`命令**
+该命令可以查找某个路径下的所有源文件（*.c和*.cpp）
+命令格式：
+
+```cmake
+aux_source_directory(< dir > < variable >)
+
+# dir: 要搜索的目录
+# variable: 将从dir目录下搜索到的源文件列表存储到该变量中
+```
+
+示例：
+
+```cmake
+# 搜索 src 目录下的源文件
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src SRC_LIST)
+```
+
+> `CMAKE_CURRENT_SOURCE_DIR` 宏表示当前访问的 `CMakeLists.txt` 文件所在的路径。
+
+**`file`命令**
+格式：
+
+```cmake
+file(GLOB/GLOB_RECURSE 变量名 要搜索的文件路径和文件类型)
+
+# GLOB: 将指定目录下搜索到的满足条件的所有文件名生成一个列表，并将其存储到变量中
+# GLOB_RECURSE：递归搜索指定目录，将搜索到的满足条件的文件名生成一个列表，并将其存储到变量中
+```
+
+示例：
+
+```cmake
+file(GLOB MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+file(GLOB MAIN_HEAD ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h)
+```
+
+> 要搜索的文件路径和类型可加双引号 :
+>
+> `file(GLOB MAIN_HEAD "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")`
+
+### 2.7 包含头文件
+`include_directories` 设置要包含头文件
+格式：
+
+```cmake
+include_directories(headpath)
+```
+
+示例：有如下目录结构
+
+```txt
+$ tree
+.
+├── build
+├── CMakeLists.txt
+├── include
+│   └── head.h
+└── src
+    ├── add.cpp
+    ├── div.cpp
+    ├── main.cpp
+    ├── mult.cpp
+    └── sub.cpp
+
+3 directories, 7 files
+```
+
+CMakeLists.txt的内容如下：
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALC)
+set(CMAKE_CXX_STANDARD 11)
+set(HOME /home/robin/Linux/calc)
+set(EXECUTABLE_OUTPUT_PATH ${HOME}/bin/)
+# 指定头文件的路径
+include_directories(${PROJECT_SOURCE_DIR}/include)
+file(GLOB SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+add_executable(app  ${SRC_LIST})
+```
+
+> `PROJECT_SOURCE_DIR` 宏对应的值就是我们在使用cmake命令时，后面紧跟的目录，一般是工程的根目录。
+
+代码参考：`chapter2.7`
+
+### 2.8 制作动态库或静态库
+
+#### 2.8.1 制作静态库
+
+制作静态库的命令：
+
+```cmake
+add_library(库名称 STATIC 源文件1 [源文件2])
+```
+
+在Linux中，静态库名称分为三部分：`lib` + `库名字` + `.a`，此处只需要指定出库的名字就可以了，另外两部分在生成该文件的时候会自动填充。
+
+windows中虽然库名和linux格式不同，但也只需指定出名字即可。
+
+示例：
+
+将`src`目录中的源文件编译成静态库：
+
+```txt
+.
+├── build
+├── CMakeLists.txt
+├── include           # 头文件目录
+│   └── head.h
+├── main.cpp          # 用于测试的源文件
+└── src               # 源文件目录
+    ├── add.cpp
+    ├── div.cpp
+    ├── mult.cpp
+    └── sub.cpp
+```
+
+ `CMakeLists.txt`文件：
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALC)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+file(GLOB SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+add_library(app STATIC ${SRC_LIST})
+```
+
+示例：参考`chapter2.8.1`
+
+#### 2.8.2 制作动态库
+
+制作动态库的命令：
+
+```cmake
+add_library(库名称 SHARED 源文件1 [源文件2] ...)
+```
+
+动态库的规则类静态库类似，在linux中为：`lib` + `库名字` + `.so`
+
+`CMakeLists.txt`文件：
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALC)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+file(GLOB SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+add_library(app SHARED ${SRC_LIST})
+```
+
+示例：参考`chapter2.8.2`
+
 
 
 ## 补充资料
@@ -218,7 +376,7 @@ WSL（Windows Subsystem for Linux）是 Windows 10 系统上的 Linux 子系统�
 
 ### 2. vs code 连接wsl
 
-1. 下载插件：`remote explorer`
+1. 下载插件：`Remote Development`
 
 2. 点击右下角，选择`Connect to WSL`
 

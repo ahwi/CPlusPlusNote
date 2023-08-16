@@ -326,6 +326,185 @@ add_library(app SHARED ${SRC_LIST})
 
 示例：参考`chapter2.8.2`
 
+#### 2.8.3 指定输出路径
+
+##### 1. 适用于动态库
+
+在linux下生成的动态库默认是有执行权限的，所以可以按照生成可执行程序的方式去指定它生成的目录：
+
+```cmake
+# 设置动态库生成路径
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+```
+
+> <font color=red>注：经过测试，通过`EXECUTABLE_OUTPUT_PATH`宏并不能指定动态库的路径，建议使用`LIBRARY_OUTPUT_PATH`来指定库路径</font>
+
+##### 2. 适用于动态库和静态库
+
+在linux下生成的静态库默认不具有可执行权限，所以不能用`EXECUTABLE_OUTPUT_PATH`宏来指定输出路径。
+
+可以使用`LIBRARY_OUTPUT_PATH`来指定库输出路径，这个宏对静态库和动态库都适用。
+
+```cmake
+# 设置动态库/静态库生成路径
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+```
+
+完整的`CMakeLists.txt`：
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALC)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+file(GLOB SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+# 设置动态库/静态库生成路径
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+# 生成动态库
+add_library(calc SHARED ${SRC_LIST})
+# 生成静态库
+# add_library(calc STATIC ${SRC_LIST})
+```
+
+完整代码 `chapter2.8.3`
+
+### 2.9 包含库文件
+
+通过调用上一节生成的动态库或静态库的函数来编写代码，此时需要进行链接处理。
+
+#### 2.9.1 链接静态库
+
+测试目录结构如下：
+
+```txt
+$ tree 
+.
+├── build
+├── CMakeLists.txt
+├── include
+│   └── head.h
+├── lib
+│   └── libcalc.a     # 制作出的静态库的名字
+└── src
+    └── main.cpp
+
+4 directories, 4 files
+```
+
+链接静态库的命令：
+
+```cmake
+link_libraries(<static lib> [<static lib>...])
+
+# 参数1：指出要链接的静态库的名字
+	* 可以是全名 `libxxx.a`
+	* 也可以是 去掉lib .a的名字 xxx
+# 参数2-N：要链接的其它静态库的名字
+```
+
+指定静态库的路径：
+
+```cmake
+link_directories(<lib path>)
+```
+
+> 如果该静态库不是系统提供的（自己制作或者使用第三方提供的静态库）可能出现静态库找不到的情况，此时可以将静态库的路径也指定出来。
+
+完整的`CMakeLists.txt`
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALC)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+file(GLOB SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+# 包含静态库路径
+link_directories(${PROJECT_SOURCE_DIR}/lib)
+# 链接静态库
+link_libraries(calc)
+add_executable(app ${SRC_LIST})
+```
+
+完整代码：`chapter2.9.1`
+
+#### 2.9.2 链接动态库
+
+**1. 动态库的链接和静态库的链接的不同**
+
+动态库的链接和静态库是完全不同的：
+
+* 静态库会在生成可执行程序的链接阶段被打包到可执行程序中，所以可执行程序启动，静态库就被加载到内存中了。
+* 动态库在生成可执行程序的链接阶段不会被打包到可执行程序中，当可执行程序被启动并且调用了动态库中的函数的时候，动态库才会被加载到内存。
+
+**2. 命令格式**
+
+链接动态库的命令如下：
+
+```cmake
+target_link_libraries(
+    <target> 
+    <PRIVATE|PUBLIC|INTERFACE> <item>... 
+    [<PRIVATE|PUBLIC|INTERFACE> <item>...]...)
+    
+# target：指定要加载动态库的文件的名字
+	* 该文件可能是一个源文件
+	* 该文件可能是一个动态库文件
+	* 该文件可能是一个可执行文件
+# PRIVATE|PUBLIC|INTERFACE: 动态库的访问权限，默认为 PUBLIC
+	* 如果各个动态库之间没有依赖关系，无需做任何设置，三者没有没有区别，一般无需指定，使用默认的 PUBLIC 即可。
+	* PUBLIC：在public后面的库会被Link到前面的target中，并且里面的符号也会被导出，提供给第三方使用。
+	* PRIVATE：在private后面的库仅被link到前面的target中，并且终结掉，第三方不能感知你调了啥库
+	* INTERFACE：在interface后面引入的库不会被链接到前面的target中，只会导出符号。
+```
+
+> 动态库的链接具有传递性：如果动态库 A 链接了动态库B、C，动态库D链接了动态库A，此时动态库D相当于也链接了动态库B、C，并可以使用动态库B、C中定义的方法。
+>
+> ```cmake
+> target_link_libraries(A B C)
+> target_link_libraries(D A)
+> ```
+
+
+
+**示例：链接动态库**
+
+在cmake中指定要链接的动态库的时候，应该将命令写到生成了可执行文件之后。
+
+示例：链接系统动态库`libpthread.so`和第三方动态库`libcalc.so`
+
+> 通过 `link_directories(path)`指定要链接的第三方动态库路径。
+
+目录结构：
+
+```txt
+$ tree 
+.
+├── build
+├── CMakeLists.txt
+├── include
+│   └── head.h            # 动态库对应的头文件
+├── lib
+│   └── libcalc.so        # 自己制作的动态库文件
+└── main.cpp              # 测试用的源文件
+
+3 directories, 4 files
+```
+
+完整的`CMakeLists.txt`：
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALC)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+file(GLOB SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+# 指定要链接的动态库路径
+link_directories(${PROJECT_SOURCE_DIR}/lib)
+add_executable(app ${SRC_LIST})
+target_link_libraries(app pthread calc)
+```
+
+示例代码：`chapter2.9.2`
+
+
+
 
 
 ## 补充资料

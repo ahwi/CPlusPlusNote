@@ -503,7 +503,283 @@ target_link_libraries(app pthread calc)
 
 示例代码：`chapter2.9.2`
 
+### 2.10 日志
 
+使用`message`显示消息：
+
+```cmake
+message([STATUS|WARNING|AUTHOR_WARNING|FATAL_ERROR|SEND_ERROR] "message to display" ...)
+
+* (无) ：重要消息
+* STATUS ：非重要消息
+* WARNING：CMake 警告, 会继续执行
+* AUTHOR_WARNING：CMake 警告 (dev), 会继续执行
+* SEND_ERROR：CMake 错误, 继续执行，但是会跳过生成的步骤
+* FATAL_ERROR：CMake 错误, 终止所有处理过程
+```
+
+ CMake的命令行工具会在stdout上显示STATUS消息，在stderr上显示其他所有消息。CMake的GUI会在它的log区域显示所有消息。
+
+示例：
+
+```cmake
+# 输出一般日志信息
+message(STATUS "source path: ${PROJECT_SOURCE_DIR}")
+# 输出警告信息
+message(WARNING "source path: ${PROJECT_SOURCE_DIR}")
+# 输出错误信息
+message(FATAL_ERROR "source path: ${PROJECT_SOURCE_DIR}")
+```
+
+### 2.11 变量操作
+
+`set` `list`命令的操作，略
+
+### 2.12 宏定义
+
+通过宏来控制代码是否生效：
+
+```cmake
+#include <stdio.h>
+#define NUMBER  3
+
+int main()
+{
+    int a = 10;
+#ifdef DEBUG
+    printf("我是一个程序猿, 我不会爬树...\n");
+#endif
+    for(int i=0; i<NUMBER; ++i)
+    {
+        printf("hello, GCC!!!\n");
+    }
+    return 0;
+}
+```
+
+第七行对DEBUG宏进行了判断，如果该宏被定义了，那么第八行就会进行日志输出，如果没有定义这个宏，第八行就相当于被注释掉了。
+
+`gcc/g++`编译时指定宏定义：
+
+```cmd
+$ gcc test.c -DDEBUG -o app 
+```
+
+在cmake中可以使用`add_definitions`命令
+
+```cmake
+add_definitions(-D宏名称)
+```
+
+针对上面的源文件编写的`CMakeLists.txt`：
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(TEST)
+# 自定义 DEBUG 宏
+add_definitions(-DDEBUG)
+add_executable(app ./test.c)
+```
+
+#### 预定义宏
+
+cmake中常用的宏：
+
+| 宏                       | 功能                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| PROJECT_SOURCE_DIR       | 使用cmake命令后紧跟的目录，一般是工程的根目录                |
+| PROJECT_BINARY_DIR       | 执行cmake命令的目录                                          |
+| CMAKE_CURRENT_SOURCE_DIR | 当前处理的CMakeLists.txt所在的路径                           |
+| CMAKE_CURRENT_BINARY_DIR | target 编译目录                                              |
+| EXECUTABLE_OUTPUT_PATH   | 重新定义目标二进制可执行文件的存放位置                       |
+| LIBRARY_OUTPUT_PATH      | 重新定义目标链接库文件的存放位置                             |
+| PROJECT_NAME             | 返回通过PROJECT指令定义的项目名称                            |
+| CMAKE_BINARY_DIR         | 项目实际构建路径，假设在build目录进行的构建，那么得到的就是这个目录的路径 |
+
+
+
+## 3. 嵌套的CMake
+
+对于多目录结构的项目，为了方便管理和维护，需要给每个目录都添加一个`CMakeLists.txt`文件。
+
+目录结构：
+
+```txt
+tree
+.
+├── CMakeLists.txt
+├── calc
+│   ├── CMakeLists.txt
+│   ├── add.cpp
+│   ├── div.cpp
+│   ├── mult.cpp
+│   └── sub.cpp
+├── include
+│   ├── calc.h
+│   └── sort.h
+├── sort
+│   ├── CMakeLists.txt
+│   └── sort.cpp
+├── test1
+│   ├── CMakeLists.txt
+│   └── testCalc.cpp
+└── test2
+    ├── CMakeLists.txt
+    └── testSort.cpp
+
+5 directories, 14 files
+```
+
+* `include 目录`：头文件目录
+* `calc 目录`：加减乘除的源码
+* `sort 目录`：排序的源码
+* `test1 目录`：测试目录，对加减乘除进行测试
+* `test2 目录`：测试目录，对排序算法进行测试
+
+可以看到各个目录底下都需要一个`CMakeLists.txt`文件
+
+**节点关系：**
+
+嵌套的 CMake 也是一个树状结构，最顶层的 `CMakeLists.txt` 是根节点，其次都是子节点。
+
+`CMakeLists.txt` 文件变量作用域的一些信息：
+
+* 根节点`CMakeLists.txt`中的变量全局有效
+* 父节点`CMakeLists.txt`中的变量可以在子节点中使用
+* 子节点`CMakeLists.txt`中的变量只能在当前节点中使用
+
+**添加子目录**
+
+把子目录添加到构建系统中：
+
+```cmake
+add_subdirectory(source_dir [binary_dir] [EXCLUDE_FROM_ALL])
+
+* source_dir：指定了CMakeLists.txt源文件和代码文件的位置，其实就是指定子目录
+* binary_dir：指定了输出文件的路径，一般不需要指定，忽略即可。
+* EXCLUDE_FROM_ALL：在子路径下的目标默认不会被包含到父路径的ALL目标里，并且也会被排除在IDE工程文件之外。用户必须显式构建在子路径下的目标。
+```
+
+通过这种方式`CMakeLists.txt`文件之间的父子关系就被构建出来了。
+
+**解决问题：**
+
+最终的目标：
+
+* 把`calc`编译成静态库
+* 把`sort`编译成动态库
+* 分别编译`test1`和`test2`，并链接对应的库，以便进行函数调用
+
+**根目录的`CMakeLists.txt`**
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(test)
+# 定义变量
+# 静态库生成的路径
+set(LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+# 测试程序生成的路径
+set(EXEC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+# 头文件目录
+set(HEAD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# 静态库的名字
+set(CALC_LIB calc)
+set(SORT_LIB sort)
+# 可执行程序的名字
+set(APP_NAME_1 test1)
+set(APP_NAME_2 test2)
+# 添加子目录
+add_subdirectory(calc)
+add_subdirectory(sort)
+add_subdirectory(test1)
+add_subdirectory(test2)
+```
+
+**calc目录的`CMakeLists.txt`**
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALCLIB)
+# 搜索当前目录下的所有源文件
+aux_source_directory(./ SRC)
+# 设置头文件路径
+include_directories(${HEAD_PATH})
+# 设置库的生成路径
+set(LIBRARY_OUTPUT_PATH ${LIB_PATH})
+# 生成静态库
+add_library(${CALC_LIB} STATIC ${SRC})
+```
+
+**sort目录的`CMakeLists.txt`**
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(SORTLIB)
+# 搜索当前目录下的所有源文件
+aux_source_directory(./ SRC)
+# 设置头文件路径
+include_directories(${HEAD_PATH})
+# 设置库的生成路径
+set(LIBRARY_OUTPUT_PATH ${LIB_PATH})
+# 生成动态库
+add_library(${SORT_LIB} SHARED ${SRC})
+```
+
+**test1目录的`CMakeLists.txt`**
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(CALCTEST)
+# 搜索当前目录下的所有源文件
+aux_source_directory(./ SRC)
+# 设置头文件路径
+include_directories(${HEAD_PATH})
+# 指定可执行要链接的静态库
+link_libraries(${CALC_LIB})
+# 指定可执行程序的生成路径
+set(EXECUTABLE_OUTPUT_PATH ${EXEC_PATH})
+# 生成可执行程序
+add_executable(${APP_NAME_1} ${SRC})
+```
+
+**test2目录的`CMakeLists.txt`**
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(SORTTEST)
+# 搜索当前目录下的所有源文件
+aux_source_directory(./ SRC)
+# 设置头文件路径
+include_directories(${HEAD_PATH})
+# 指定可执行要链接的动态库
+link_libraries(${CALC_LIB})
+# 指定可执行程序的生成路径
+set(EXECUTABLE_OUTPUT_PATH ${EXEC_PATH})
+# 生成可执行程序
+add_executable(${APP_NAME_2} ${SRC})
+# 指定可执行程序要连接的动态库
+target_link_libraries(${APP_NAME_2} ${SORT_LIB})
+```
+
+编译后生成的文件：
+
+```txt
+$ tree bin/ lib/
+bin/
+├── test1
+└── test2
+lib/
+├── libcalc.a
+└── libsort.so
+```
+
+> 在项目中，如果将程序中的某个模块制作成了动态库或者静态库并且在CMakeLists.txt 中指定了库的输出目录，而后其它模块又需要加载这个生成的库文件，此时直接使用就可以了，如果没有指定库的输出路径或者需要直接加载外部提供的库文件，此时就需要使用 link_directories 将库文件路径指定出来。
+
+
+
+## 4. 流程控制
+
+略
 
 
 

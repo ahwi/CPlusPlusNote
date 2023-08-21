@@ -1,3 +1,7 @@
+# 资料：
+
+示例程序：http://www.informit.com/title/0321714113
+
 
 
 # 第2章 变量和基本类型
@@ -20,6 +24,100 @@
 **关于char的使用建议：**
 
 在算术表达式中不要使用char或bool，只有在存放字符或布尔值时才使用它们。因为类型char在一些机器上是有符号的，而在另一些机器上又是无符号的，所以如果使用char进行运算特别容易出问题。
+
+# 第7章 类
+
+类的基本思想：
+
+* 数据抽象(data abstraction)：一种依赖于接口和实现分离的编程（以及设计）技术
+* 封装(encapsulation)：实现了类的接口和实现的分离。
+
+## 7.1 定义抽象数据类型
+
+### 7.1.1 设计`Sales_data`类
+
+`Sales_data`的接口应该包含的操作：
+
+* `isbn` 成员函数，用于返回对象的ISBN编号。
+* `combine` 成员函数，用于将一个`Sales_data`对象加到另一个对象上。
+* `add` 函数，执行两个`Sales_data`对象的加法。
+* `read`函数，将数据从`istream`读入到`Sales_data`对象中。
+* `print` 函数，将`Sales_data`对象的值输出到ostream。
+
+**使用`Sales_data`**类
+
+使用`Sales_data`类读取数据：
+
+```txt
+0-201-70353-X 4 24.99
+0-201-82470-1 4 45.39
+0-201-88954-4 2 15.00 
+0-201-88954-4 5 12.00 
+0-201-88954-4 7 12.00 
+0-201-88954-4 2 12.00 
+0-399-82477-1 2 45.39
+0-399-82477-1 3 45.39
+0-201-78345-X 3 20.00
+0-201-78345-X 2 25.00
+```
+
+代码：
+
+作用：一行一行读取上面的数据，相同的ISBN编号进行累加，然后打印
+
+```c++
+Sales_data total;				//保存当前求和结果的变量
+if(read(cin, total)){			//读入第一笔交易
+    Sales_data trans;			//保存下一条交易数据的变量
+    while(read(cin, trans)) {	//读入剩余的交易
+        if(total.isbn() == trans.isbn())	//检查isbn
+            total.combine(trans);			//更新变量total当前的值
+        else {
+            print(cout, total) << endl;		//输出结果
+            total = trans;					//处理下一本书
+        }
+    }
+    print(cout, total) << endl;			//输出最后一笔交易
+} else {									//没用输入任何信息
+    cerr << "No data?!" << endl;			//通知用户
+}
+```
+
+成员函数可以定义在类内，也可以定义在类外。
+
+**this**
+
+成员函数通过一个名为`this`的额外的隐式参数来访问调用它的那个对象。
+
+如下：
+
+```c++
+total.isbn();
+```
+
+编译器负责把total的地址传递给isbn的隐式形参this，可以等价地任务编译器将该调用重写成了如下的形式：
+
+```c++
+// 伪代码，用于说明调用成员函数的实际执行过程
+Sales_data::isbn(&total);
+```
+
+this是隐式定义的，任何自定义名为this的参数或变量的行为都是非法的。
+
+this是一个常量指针，不允许改变this中保存的地址。
+
+可以隐式的使用this调用类成员，也可以显示的调用：
+
+```c++
+std::string isbn() const {return bookNo;}
+std::string isbn() const {return this->bookNo;}
+```
+
+
+
+
+
+
 
 
 

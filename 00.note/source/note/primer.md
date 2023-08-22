@@ -44,6 +44,16 @@
 * `read`函数，将数据从`istream`读入到`Sales_data`对象中。
 * `print` 函数，将`Sales_data`对象的值输出到ostream。
 
+成员函数（非接口部分）：
+
+* `avg_price` 返回售出书籍的平均价格
+
+数据成员：
+
+* `bookNo` string类型，表示ISBN编号
+* `units_sold` unsigned 类型，表示某本书的销量
+* `revenue` double 类型，表示这本书的总销量收入
+
 **使用`Sales_data`**类
 
 使用`Sales_data`类读取数据：
@@ -83,7 +93,29 @@ if(read(cin, total)){			//读入第一笔交易
 }
 ```
 
-成员函数可以定义在类内，也可以定义在类外。
+**定义`Sales_data`类**
+
+```c++
+struct Sales_data {
+    // 新成员：关于Sales_data对象的操作
+    std::string isbn() const {return bookNo;}
+    Sales_data& combine(const Sales_data&);
+    double avg_price() const;
+    //数据成员
+    std::string bookNo;
+    unsinged units_sold = 0;
+    double revenue = 0.0;
+};
+
+//Sales_data 的非成员接口函数
+Sales_data add(const Sales_data&, const Sales_data&);
+std::ostream &print(std::ostream&, const Sales_data&);
+std::istream &read(std::istream&, Sales_data&);
+```
+
+成员函数的声明必须在类的内部，它的定义则既可以在类的内部也可以在类的外部。
+
+定义在类内部的函数是隐式的`inline`函数。
 
 **this**
 
@@ -102,9 +134,9 @@ total.isbn();
 Sales_data::isbn(&total);
 ```
 
-this是隐式定义的，任何自定义名为this的参数或变量的行为都是非法的。
+this 是隐式定义的，任何自定义名为 this 的参数或变量的行为都是非法的。
 
-this是一个常量指针，不允许改变this中保存的地址。
+this 是一个常量指针，不允许改变 this 中保存的地址。
 
 可以隐式的使用this调用类成员，也可以显示的调用：
 
@@ -113,7 +145,50 @@ std::string isbn() const {return bookNo;}
 std::string isbn() const {return this->bookNo;}
 ```
 
+**`const` 成员函数**
 
+`isbn`函数参数列表后面有个`const`关键字，这里`const`的作用是修改隐式 this 指针的类型。
+
+<font color=red>默认情况下，this 指向的是类类型非常量版本的常量指针。</font>
+
+例如：
+
+* 在`Sales_data`成员函数中，this 的类型是 `Sales_data *const`
+* 默认情况下，不能把 this 绑定到一个常量对象上
+* 不能在常量对象上调用一个普通函数（不然可能修改到对象）
+* 如果成员函数不会修改对象内容，则可以声明成 `const` 类型，即把 this 声明成 `const Sales_data *const`类型。
+
+**类作用域和成员函数**
+
+* 类本身就是一个作用域
+
+* 成员函数体可以随意使用类中的其他成员而无须在意这些成员的出现次序
+
+> 编译器分两步处理类：首先编译成员的声明，然后才轮到成员函数体
+
+**在类的外部定义成员函数**
+
+```c++
+double Sales_data::avg_price() const {
+    if(units_sold)
+        return revenue/units_sold;
+    else
+        return 0;
+}
+```
+
+`Sales_data::avg_price`使用作用域运算符说明：定义了一个名为`avg_price`的函数，并且该函数被声明在`Sales_data`的作用域内。
+
+**定义一个返回 this 对象的函数**
+
+```c++
+Sales_data& Sales_data::combine(const Sales_data &rhs)
+{
+    units_sold += rhs.units_sold;	//把 rhs 的成员加到this对象上
+    revenue += rhs.revenue;
+    return *this;					// 返回调用该函数的对象
+}
+```
 
 
 

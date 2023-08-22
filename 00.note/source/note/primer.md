@@ -103,7 +103,7 @@ struct Sales_data {
     double avg_price() const;
     //数据成员
     std::string bookNo;
-    unsinged units_sold = 0;
+    unsigned units_sold = 0;
     double revenue = 0.0;
 };
 
@@ -189,6 +189,102 @@ Sales_data& Sales_data::combine(const Sales_data &rhs)
     return *this;					// 返回调用该函数的对象
 }
 ```
+
+**定义read和print函数**
+
+```c++
+// 输入的信息包括 ISBN、售出总数和售出价格
+std::istream &read(std::istream &is, Sales_data &item)
+{
+    double price;
+    is >> item.bookNo >> item.units_sold >> price;
+    item.revenue = price * item.units_sold;
+    return is;
+}
+
+std::ostream &print(std::ostream &os, const Sales_data &item)
+{
+    os << item.isbn() << " " << item.units_sold << " "
+       << item.revenue << " " << item.avg_price();
+    return os;
+}
+```
+
+* IO类属于不能拷贝的类型，因此通过引用传递它们。
+* 因为读取和写入操作会改变流的内容，所以两个函数接收的都是普通的引用，而非对常量的引用。
+
+* `print`函数不负责换行，一般执行输出任务的函数应该减少对格式的控制，这样可以确保由用户代码来决定是否换行。
+
+**定义add函数**
+
+```c++
+Sales_data add(const Sales_data &lhs,  const Sales_data &rhs)
+{
+    Sales_data sum = lhs;   //把 lhs 的数据成员拷贝给 sum
+    sum.combine(rhs);       //把 rhs 的数据成员加到 sum 当中
+    return sum;
+}
+```
+
+### 7.1.4 构造函数
+
+构造函数（constructor）：
+
+* 构造函数的任务是初始化类对象的数据成员，无论何时只要类的对象被创建，就会执行构造函数
+
+* 构造函数和类名相同，没有返回值，有一个（也可能为空）参数列表和一个（可能为空的）函数体
+
+* 类可以包含多个构造函数，不同的构造函数之间必须在参数数量或参数类型上有所区别
+
+* 构造函数不能被声明成`const`的
+
+  > 当我们创建类的一个`const`对象时，直到构造函数完成初始化过程，对象才真正取得其"常量"属性。因此构造函数在`const`对象的构造过程中可以向其写值。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

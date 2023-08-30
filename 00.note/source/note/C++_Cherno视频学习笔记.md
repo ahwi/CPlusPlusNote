@@ -204,3 +204,124 @@ int main()
 [rvalue] YanChernikov
 ```
 
+## 89. 移动语义
+
+移动语义允许我们移动对象。c++11引入了右值引用，这是移动语义所必须的。
+
+在很多情况下，我们不需要或者不想把一个对象从一个地方复制到另一个地方，但又不得不复制，因为这是唯一可以复制的地方。
+
+例如，如果我把一个对象传递给一个函数，那么它要获得那个对象的所有权，别无选择，只能拷贝；当我想从函数返回一个对象时也是一样的，仍然需要在函数中创建那个对象，然后返回它。
+
+> 返回值可以有其他优化方式（`返回值优化`），不一定要用移动语义
+
+### 示例：
+
+```c++
+#include <iostream>
+
+class String 
+{
+public:
+	String() = default;
+	String(const char* string) 
+	{
+		printf("Created!\n");
+		m_Size = strlen(string);
+		m_Data = new char[m_Size];
+		memcpy(m_Data, string, m_Size);
+	}
+
+	String(const String& other) 
+	{
+		printf("Copied!\n");
+		m_Size = other.m_Size;
+		m_Data = new char[m_Size];
+		memcpy(m_Data, other.m_Data, m_Size);
+	}
+
+	~String()
+	{
+		printf("Destroyed!\n");
+		delete m_Data;
+	}
+
+	void Print()
+	{
+		for (uint32_t i = 0; i < m_Size; i++) {
+			printf("%c", m_Data[i]);
+		}
+		printf("\n");
+	}
+
+public:
+	char* m_Data;
+	uint32_t m_Size;
+};
+
+class Entity
+{
+public:
+	Entity(const String& name) 
+		: m_Name(name)
+	{
+	}
+
+	void PrintName()
+	{
+		m_Name.Print();
+	}
+private:
+	String m_Name;
+};
+
+int main() 
+{
+	// "Cherno" 隐式转换成 String，等价于： Entity entity(String("Cherno"));
+	Entity entity("Cherno");
+	entity.PrintName();
+
+	std::cin.get();
+	return 0;
+}
+```
+
+> char 是基本类型，delete char数组时，加不加[]无所谓，编译器会自动识别，自定义数据类型就不行
+
+以上代码定义了 `String` 类和调用它的`Entity`类，运行上面代码的结果如下：
+
+![image-20230830085705848](C++_Cherno视频学习笔记.assets/image-20230830085705848.png)
+
+程序先用"Cherno"创建了一个`String`的临时对象，然后通过`String`的拷贝构造函数创建了`m_Name`对象，然后临时变量被销毁，最后调用`PrintName()`函数。
+
+使用移动语义可以省略`拷贝构造`的步骤，直接把创建的临时对象资源移动给`m_Name`对象。
+
+**加入移动语义**
+
+在`String`类中加入移动构造函数：
+
+```c++
+String(String&& other) noexcept
+{
+    printf("Moved!\n");
+    m_Size = other.m_Size;
+    m_Data = other.m_Data;
+
+    other.m_Size = 0;
+    other.m_Data = nullptr;
+}
+```
+
+在`Entity`类中加入如下构造函数：
+
+```c++
+Entity(String&& name) 
+    //: m_Name(name) // 该方式还是使用Sting的拷贝构造方法
+    //: m_Name((String&&) name) // 该方式会调用String的移动构造函数
+    : m_Name(std::move(name)) // 该方式也会调用String的移动构造函数，只是比上面的规范
+{
+}
+```
+
+修改后输出的结果，可以看到，调用了`String`的移动构造函数
+
+![image-20230830092639790](C++_Cherno视频学习笔记.assets/image-20230830092639790.png)
